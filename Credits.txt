@@ -1,0 +1,7 @@
+Original concept:		the Developers of Incredible Power
+Programming + additional art:	Michiel "El Muerte" Hendriks
+Triad model + initial skin:	SolidSnake
+
+
+---
+$Id: Credits.txt,v 1.1 2004/09/02 08:33:57 elmuerte Exp $
