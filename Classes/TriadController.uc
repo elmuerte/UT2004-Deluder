@@ -6,7 +6,7 @@
 																			<br />
 	This program is free software; you can redistribute and/or modify
 	it under the terms of the Open Unreal Mod License.
-	<!-- $Id: TriadController.uc,v 1.1 2004/09/02 08:33:57 elmuerte Exp $ -->
+	<!-- $Id: TriadController.uc,v 1.2 2004/09/02 09:45:03 elmuerte Exp $ -->
 *******************************************************************************/
 
 class TriadController extends ScriptedController;
@@ -16,6 +16,9 @@ var protected NavigationPoint SafeDestination;
 
 /** last and next navigation point, used for error correction */
 var protected Actor NextNavPoint, LastNavPoint;
+
+/** last destination selection */
+var protected float LastDestUpdate;
 
 /** rate a destination point */
 function float RateDestination(NavigationPoint N)
@@ -33,9 +36,11 @@ function float RateDestination(NavigationPoint N)
 			NextDist = VSize(OtherPlayer.Pawn.Location - N.Location);
 			score += NextDist / i; // create average score
 			i++;
-        }
-    }
-    return score;
+		}
+	}
+	if (score > 2000) score *= -1; // too far away
+	score += score*(0.33*frand()-0.16);
+	return score;
 }
 
 /** find a safe destination away from all players */
@@ -70,24 +75,11 @@ function NotifyTakeHit(pawn InstigatedBy, vector HitLocation, int Damage, class<
 /** check navigation point, return true if the MoveToward should be performed */
 function bool CheckNavPoint(Actor N)
 {
-	if (N == none)
-	{
-		GotoState('Roaming', 'FindNewDestination');
-		return false;
-	}
 	if (NavigationPoint(N) != none)
 	{
 		if (NavigationPoint(N).bSpecialMove || NavigationPoint(N).bSpecialForced)
 		{
 			NavigationPoint(N).SuggestMovePreparation(Pawn);
-		}
-		if (AIMarker(N) != none)
-		{
-			//TOOD: broken
-			log(N, name);
-			AIMarker(N).markedScript.TakeOver(Pawn);
-			GotoState('Scripting');
-			return false;
 		}
 	}
 	return actorReachable(N);
@@ -96,25 +88,40 @@ function bool CheckNavPoint(Actor N)
 /** normal behavior, the triad picks a safe point and tries to move towards it */
 auto state Roaming
 {
+	/** if got hit, find next path node, to correct a possible mistake */
+	function NotifyTakeHit(pawn InstigatedBy, vector HitLocation, int Damage, class<DamageType> damageType, vector Momentum)
+	{
+		global.NotifyTakeHit(InstigatedBy,HitLocation,Damage,DamageType,Momentum);
+		if ((Damage > 10) && (LastDestUpdate < Level.TimeSeconds-2 )) GotoState('Roaming', 'FindNewDestination');
+		else GotoState('Roaming', 'ContinueMovement');
+	}
 
 FindNewDestination:
 	WaitForLanding();
 	NextNavPoint = none;
+	LastDestUpdate = Level.TimeSeconds;
+	if (LastDestUpdate < Level.TimeSeconds-2 ) sleep(1);
 	SafeDestination = FindSafeDestination();
 	log("New destination"@SafeDestination@SafeDestination.Location, name);
-	while (!Pawn.ReachedDestination(SafeDestination))
+
+	while (!Pawn.ReachedDestination(SafeDestination) && (LastDestUpdate > Level.TimeSeconds-10 ))
 	{
 		if (NextNavPoint == SafeDestination) // failed to reach the destination
 		{
 			Warn("Unable to reach SafeDestination"@NextNavPoint);
-			goto('FindNewDestination');
+			break;
 		}
 		LastNavPoint = NextNavPoint;
 		NextNavPoint = FindPathToward(SafeDestination);
+		if (NextNavPoint == none)
+		{
+			Warn("NextNavPoint == none");
+			break;
+		}
 		if (LastNavPoint == NextNavPoint)
 		{
 			Warn("LastNavPoint == NextNavPoint:"@LastNavPoint);
-			goto('FindNewDestination'); // endless loop?
+			break;
 		}
 		if (CheckNavPoint(NextNavPoint)) MoveToward(NextNavPoint, self);
 ContinueMovement:
@@ -123,13 +130,4 @@ ContinueMovement:
 
 Begin:
 	goto('FindNewDestination');
-}
-
-/** AIscript */
-state Scripting
-{
-	function LeaveScripting()
-	{
-		GotoState('Roaming', 'ContinueMovement');
-	}
 }
