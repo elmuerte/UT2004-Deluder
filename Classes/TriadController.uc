@@ -6,7 +6,7 @@
 																			<br />
 	This program is free software; you can redistribute and/or modify
 	it under the terms of the Open Unreal Mod License.
-	<!-- $Id: TriadController.uc,v 1.4 2004/12/13 08:07:34 elmuerte Exp $ -->
+	<!-- $Id: TriadController.uc,v 1.5 2004/12/13 11:06:31 elmuerte Exp $ -->
 *******************************************************************************/
 
 class TriadController extends ScriptedController;
@@ -42,6 +42,11 @@ function float RateDestination(NavigationPoint N)
 		}
 	}
 	if (score > 2000) score *= -1; // too far away
+	NextDist = vector(GetViewRotation()) dot Normal(N.Location - Pawn.Location);
+	if (NextDist < -0.5)
+    {
+        score += score*NextDist/2; // behind token
+    }
 	score += score*(0.33*frand()-0.16);
 	return score;
 }
@@ -105,13 +110,11 @@ auto state Roaming
 	}
 
 FindNewDestination:
-    if (NavFailCount > 50) GotoState('BrokenNavigation');
 	WaitForLanding();
 	NextNavPoint = none;
 	LastDestUpdate = Level.TimeSeconds;
 	if (LastDestUpdate < Level.TimeSeconds-2 ) sleep(1);
 	SafeDestination = FindSafeDestination();
-	LastNavPoint = SafeDestination; // quick fix
 	log("New destination"@SafeDestination@SafeDestination.Location, name);
 
 	while (!Pawn.ReachedDestination(SafeDestination) && (LastDestUpdate > Level.TimeSeconds-10 ))
@@ -119,17 +122,24 @@ FindNewDestination:
 		if (NextNavPoint == SafeDestination) // failed to reach the destination
 		{
 			Warn("Unable to reach SafeDestination"@NextNavPoint);
-            Pawn.DoJump(true);
+			Pawn.DoJump(true);
 			NavFailCount++;
+			if (NavFailCount > 20) GotoState('BrokenNavigation');
 			break;
+		}
+		else if (NextNavPoint != none && (vector(GetViewRotation()) dot Normal(SafeDestination.Location - NextNavPoint.Location)) < -0.66)
+		{
+            Warn("Went past SafeDestination");
+            break;
 		}
 		LastNavPoint = NextNavPoint;
 		NextNavPoint = FindPathToward(SafeDestination);
-        if (NextNavPoint == none)
+		if (NextNavPoint == none)
 		{
 			Warn("NextNavPoint == none");
 			Pawn.DoJump(true);
 			NavFailCount++;
+			if (NavFailCount > 20) GotoState('BrokenNavigation');
 			break;
 		}
 		if (LastNavPoint == NextNavPoint)
@@ -137,13 +147,14 @@ FindNewDestination:
 			Warn("LastNavPoint == NextNavPoint:"@LastNavPoint);
 			Pawn.DoJump(true);
 			NavFailCount++;
+			if (NavFailCount > 20) GotoState('BrokenNavigation');
 			break;
 		}
 		if (CheckNavPoint(NextNavPoint))
-        {
-            MoveToward(NextNavPoint, self);
-            NavFailCount = 0;
-        }
+		{
+			MoveToward(NextNavPoint, self);
+			NavFailCount = 0;
+		}
 ContinueMovement:
 	}
 	goto('FindNewDestination');
@@ -152,12 +163,14 @@ Begin:
 	goto('FindNewDestination');
 }
 
-state BrokenNavigation extends Roaming
+state BrokenNavigation
 {
+begin:
+    log("entered broken navigation state", name);
 }
 
 
 defaultproperties
 {
-    bJumpOverWall=false
+	bJumpOverWall=false
 }

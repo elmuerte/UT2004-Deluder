@@ -9,7 +9,7 @@
 																			<br />
 	This program is free software; you can redistribute and/or modify
 	it under the terms of the Open Unreal Mod License.
-	<!-- $Id: Deluder.uc,v 1.3 2004/12/13 08:07:34 elmuerte Exp $ -->
+	<!-- $Id: Deluder.uc,v 1.4 2004/12/13 11:06:31 elmuerte Exp $ -->
 *******************************************************************************/
 
 class Deluder extends xTeamGame;
@@ -122,7 +122,7 @@ function float RatePlayerStart(NavigationPoint N, byte Team, Controller Player)
 function SpawnTriad()
 {
 	local NavigationPoint StartSpot;
-	local Pawn NewTriad;
+	local Triad NewTriad;
 
 	StartSpot = FindPlayerStart(None,1);
 	if ( StartSpot == None )
@@ -131,7 +131,7 @@ function SpawnTriad()
 	NewTriad = Spawn(TriadClass,,,StartSpot.Location+(TriadClass.Default.CollisionHeight - StartSpot.CollisionHeight) * vect(0,0,1),StartSpot.Rotation);
 	if (NewTriad != none)
 	{
-		NewTriad.SetPhysics(PHYS_Hovering); //otherwise the AI won't kick in, maybe move this to an other location in Triad?
+		NewTriad.SetMovementPhysics(); //otherwise the AI won't kick in, maybe move this to an other location in Triad?
 		needNewTriad--;
 		log("New triad"@NewTriad@"@"@NewTriad.location, name);
 	}

@@ -7,7 +7,7 @@
 																			<br />
 	This program is free software; you can redistribute and/or modify
 	it under the terms of the Open Unreal Mod License.
-	<!-- $Id: Triad.uc,v 1.3 2004/12/13 08:07:34 elmuerte Exp $ -->
+	<!-- $Id: Triad.uc,v 1.4 2004/12/13 11:06:31 elmuerte Exp $ -->
 *******************************************************************************/
 
 class Triad extends Monster;
@@ -44,11 +44,11 @@ simulated function FootStepping(int Side);
 
 state Dying
 {
-    function BeginState()
+	function BeginState()
 	{
 	   bDead = true;
 	   super.BeginState();
-    }
+	}
 }
 
 defaultproperties
@@ -75,7 +75,6 @@ defaultproperties
 
 	//TODO: tweak
 	JumpZ=450
-	bCanDodge=true
 	bCanDodgeDoubleJump=true
 	bCanTeleport=true
 	bCanWalkOffLedges=true
@@ -91,7 +90,7 @@ defaultproperties
 	MaxFallSpeed=2400.0
 
 	GibGroupClass=class'xBotGibGroup'
-    SoundGroupClass=class'xBotSoundGroup'
+	SoundGroupClass=class'xBotSoundGroup'
 	AmbientSound=sound'machinery36'
 
 	MovementAnims(0)=Spinny
